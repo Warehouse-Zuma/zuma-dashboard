@@ -262,7 +262,7 @@
     <!-- Footer -->
     <footer class="zuma-dark text-white py-4 mt-8">
         <div class="container mx-auto px-4 text-center text-sm text-gray-400">
-            ZUMA Cycle Count v1.5 | Stock Opname System
+            ZUMA Cycle Count v1.6 | Stock Opname System
         </div>
     </footer>
 
@@ -1042,16 +1042,17 @@
             let html = `
                 <div class="overflow-x-auto">
                     <table class="w-full text-sm">
-                        <thead class="bg-gray-100">
+                        <thead class="bg-gray-800 text-white">
                             <tr>
-                                <th class="py-2 px-3 text-left">Tanggal</th>
-                                <th class="py-2 px-3 text-left">Petugas</th>
-                                <th class="py-2 px-3 text-center">Artikel</th>
-                                <th class="py-2 px-3 text-center">Match</th>
-                                <th class="py-2 px-3 text-center">Selisih (+)</th>
-                                <th class="py-2 px-3 text-center">Selisih (-)</th>
-                                <th class="py-2 px-3 text-center">Akurasi</th>
-                                <th class="py-2 px-3 text-center">Detail</th>
+                                <th class="py-3 px-2 text-left">Tanggal</th>
+                                <th class="py-3 px-2 text-left">Petugas</th>
+                                <th class="py-3 px-2 text-center">Artikel</th>
+                                <th class="py-3 px-2 text-center">Match</th>
+                                <th class="py-3 px-2 text-center bg-orange-600">Selisih DDD</th>
+                                <th class="py-3 px-2 text-center bg-purple-600">Selisih LJBB</th>
+                                <th class="py-3 px-2 text-center bg-teal-600">Selisih MBB</th>
+                                <th class="py-3 px-2 text-center bg-gray-600">Total Selisih</th>
+                                <th class="py-3 px-2 text-center">Akurasi</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -1061,23 +1062,32 @@
                 const session = grouped[key];
                 const items = session.items;
                 
-                // Calculate stats and collect items by category
-                let matchItems = [], plusItems = [], minusItems = [];
-                let totalSistem = 0, totalSelisih = 0;
+                // Calculate stats per entity - sum all selisih (both + and -)
+                let matchCount = 0;
+                let selisihDDD = 0, selisihLJBB = 0, selisihMBB = 0, selisihTotal = 0;
+                let totalSistem = 0, totalAbsSelisih = 0;
+                let countSelisihDDD = 0, countSelisihLJBB = 0, countSelisihMBB = 0, countSelisihTotal = 0;
                 
                 items.forEach(item => {
-                    const selisih = item.selisihTotal;
-                    const sistem = item.sistemTotal;
+                    totalSistem += item.sistemTotal;
+                    totalAbsSelisih += Math.abs(item.selisihTotal);
                     
-                    totalSistem += sistem;
-                    totalSelisih += Math.abs(selisih);
+                    if (item.selisihTotal === 0) matchCount++;
                     
-                    if (selisih === 0) matchItems.push(item);
-                    else if (selisih > 0) plusItems.push(item);
-                    else minusItems.push(item);
+                    // Sum selisih per entity
+                    selisihDDD += item.selisihDDD;
+                    selisihLJBB += item.selisihLJBB;
+                    selisihMBB += item.selisihMBB;
+                    selisihTotal += item.selisihTotal;
+                    
+                    // Count articles with selisih per entity
+                    if (item.selisihDDD !== 0) countSelisihDDD++;
+                    if (item.selisihLJBB !== 0) countSelisihLJBB++;
+                    if (item.selisihMBB !== 0) countSelisihMBB++;
+                    if (item.selisihTotal !== 0) countSelisihTotal++;
                 });
                 
-                const accuracy = totalSistem > 0 ? ((1 - totalSelisih / totalSistem) * 100).toFixed(1) : 100;
+                const accuracy = totalSistem > 0 ? ((1 - totalAbsSelisih / totalSistem) * 100).toFixed(1) : 100;
                 
                 let accuracyClass = 'text-green-600 bg-green-100';
                 if (accuracy < 90) accuracyClass = 'text-red-600 bg-red-100';
@@ -1089,33 +1099,34 @@
                     displayDate = displayDate.split('T')[0];
                 }
                 
+                // Helper to format selisih cell with color and make clickable
+                const formatSelisihCell = (value, count, entity, bgClass) => {
+                    if (value === 0) return `<td class="py-2 px-2 text-center ${bgClass}"><span class="text-gray-400">0</span></td>`;
+                    const color = value > 0 ? 'text-blue-600' : 'text-red-600';
+                    const prefix = value > 0 ? '+' : '';
+                    return `<td class="py-2 px-2 text-center ${bgClass}">
+                        <span class="${color} font-medium cursor-pointer hover:underline" onclick="showSelisihDetail('${key}', '${entity}')">
+                            ${prefix}${value} <span class="text-xs text-gray-400">(${count})</span>
+                        </span>
+                    </td>`;
+                };
+                
                 html += `
                     <tr class="border-b hover:bg-gray-50 ${idx % 2 === 0 ? '' : 'bg-gray-50'}">
-                        <td class="py-3 px-3 font-medium">${displayDate}</td>
-                        <td class="py-3 px-3">${session.petugas}</td>
-                        <td class="py-3 px-3 text-center">
-                            <span class="px-2 py-1 rounded bg-gray-100 text-gray-700 cursor-pointer hover:bg-gray-200" 
-                                onclick="showBreakdown('${key}', 'all')">${items.length}</span>
+                        <td class="py-2 px-2 font-medium">${displayDate}</td>
+                        <td class="py-2 px-2">${session.petugas}</td>
+                        <td class="py-2 px-2 text-center">
+                            <span class="cursor-pointer hover:underline text-blue-600" onclick="showBreakdown('${key}', 'all')">${items.length}</span>
                         </td>
-                        <td class="py-3 px-3 text-center">
-                            <span class="px-2 py-1 rounded bg-gray-100 text-gray-700 ${matchItems.length > 0 ? 'cursor-pointer hover:bg-gray-200' : ''}" 
-                                ${matchItems.length > 0 ? `onclick="showBreakdown('${key}', 'match')"` : ''}>${matchItems.length}</span>
+                        <td class="py-2 px-2 text-center">
+                            <span class="px-2 py-1 rounded bg-green-100 text-green-700 font-medium">${matchCount}</span>
                         </td>
-                        <td class="py-3 px-3 text-center">
-                            <span class="px-2 py-1 rounded bg-blue-100 text-blue-700 ${plusItems.length > 0 ? 'cursor-pointer hover:bg-blue-200' : ''}" 
-                                ${plusItems.length > 0 ? `onclick="showBreakdown('${key}', 'plus')"` : ''}>${plusItems.length}</span>
-                        </td>
-                        <td class="py-3 px-3 text-center">
-                            <span class="px-2 py-1 rounded bg-red-100 text-red-700 ${minusItems.length > 0 ? 'cursor-pointer hover:bg-red-200' : ''}" 
-                                ${minusItems.length > 0 ? `onclick="showBreakdown('${key}', 'minus')"` : ''}>${minusItems.length}</span>
-                        </td>
-                        <td class="py-3 px-3 text-center">
+                        ${formatSelisihCell(selisihDDD, countSelisihDDD, 'DDD', 'bg-orange-50')}
+                        ${formatSelisihCell(selisihLJBB, countSelisihLJBB, 'LJBB', 'bg-purple-50')}
+                        ${formatSelisihCell(selisihMBB, countSelisihMBB, 'MBB', 'bg-teal-50')}
+                        ${formatSelisihCell(selisihTotal, countSelisihTotal, 'Total', 'bg-gray-100')}
+                        <td class="py-2 px-2 text-center">
                             <span class="px-2 py-1 rounded font-medium ${accuracyClass}">${accuracy}%</span>
-                        </td>
-                        <td class="py-3 px-3 text-center">
-                            <button onclick="showHistoryDetail('${key}')" class="text-blue-600 hover:underline text-sm">
-                                Lihat
-                            </button>
                         </td>
                     </tr>
                 `;
@@ -1125,7 +1136,7 @@
                         </tbody>
                     </table>
                 </div>
-                <p class="text-xs text-gray-400 mt-3 text-center">Menampilkan ${recentKeys.length} sesi terakhir</p>
+                <p class="text-xs text-gray-400 mt-3 text-center">Menampilkan ${recentKeys.length} sesi terakhir • Klik angka selisih untuk lihat detail artikel</p>
             `;
             
             historySection.innerHTML = html;
@@ -1134,44 +1145,50 @@
             window.historyData = grouped;
         }
 
-        function showBreakdown(key, type) {
+        // Show all articles with selisih (both + and -) for an entity
+        function showSelisihDetail(key, entity) {
             const session = window.historyData[key];
             if (!session) return;
             
+            // Filter articles that have selisih for this entity
             let filteredItems = [];
-            let title = '';
-            let bgColor = '';
-            
-            switch(type) {
-                case 'all':
-                    filteredItems = session.items;
-                    title = 'Semua Artikel';
-                    bgColor = 'bg-gray-50';
-                    break;
-                case 'match':
-                    filteredItems = session.items.filter(i => i.selisihTotal === 0);
-                    title = 'Artikel Match (Selisih 0)';
-                    bgColor = 'bg-gray-50';
-                    break;
-                case 'plus':
-                    filteredItems = session.items.filter(i => i.selisihTotal > 0);
-                    title = 'Artikel Selisih Lebih (+)';
-                    bgColor = 'bg-blue-50';
-                    break;
-                case 'minus':
-                    filteredItems = session.items.filter(i => i.selisihTotal < 0);
-                    title = 'Artikel Selisih Kurang (-)';
-                    bgColor = 'bg-red-50';
-                    break;
+            if (entity === 'DDD') {
+                filteredItems = session.items.filter(i => i.selisihDDD !== 0);
+            } else if (entity === 'LJBB') {
+                filteredItems = session.items.filter(i => i.selisihLJBB !== 0);
+            } else if (entity === 'MBB') {
+                filteredItems = session.items.filter(i => i.selisihMBB !== 0);
+            } else {
+                filteredItems = session.items.filter(i => i.selisihTotal !== 0);
             }
+            
+            // Sort by selisih (largest absolute value first)
+            filteredItems.sort((a, b) => {
+                let selA, selB;
+                if (entity === 'DDD') { selA = a.selisihDDD; selB = b.selisihDDD; }
+                else if (entity === 'LJBB') { selA = a.selisihLJBB; selB = b.selisihLJBB; }
+                else if (entity === 'MBB') { selA = a.selisihMBB; selB = b.selisihMBB; }
+                else { selA = a.selisihTotal; selB = b.selisihTotal; }
+                return Math.abs(selB) - Math.abs(selA);
+            });
+            
+            // Format date
+            let displayDate = session.tanggal;
+            if (displayDate.includes('T')) displayDate = displayDate.split('T')[0];
+            
+            // Entity color
+            let entityColor = 'bg-gray-100';
+            if (entity === 'DDD') entityColor = 'bg-orange-100';
+            else if (entity === 'LJBB') entityColor = 'bg-purple-100';
+            else if (entity === 'MBB') entityColor = 'bg-teal-100';
             
             let modalHtml = `
                 <div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4" id="breakdownModal">
-                    <div class="bg-white rounded-xl shadow-2xl max-w-5xl w-full max-h-[90vh] overflow-hidden">
-                        <div class="px-6 py-4 border-b ${bgColor} flex justify-between items-center">
+                    <div class="bg-white rounded-xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-hidden">
+                        <div class="px-6 py-4 border-b ${entityColor} flex justify-between items-center">
                             <div>
-                                <h3 class="font-bold text-lg">${title}</h3>
-                                <p class="text-sm text-gray-500">${session.tanggal} - ${session.petugas} (${filteredItems.length} artikel)</p>
+                                <h3 class="font-bold text-lg">📋 Detail Selisih ${entity}</h3>
+                                <p class="text-sm text-gray-500">${displayDate} - ${session.petugas} (${filteredItems.length} artikel dengan selisih)</p>
                             </div>
                             <button onclick="closeBreakdownModal()" class="p-2 hover:bg-gray-200 rounded-full">
                                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1180,109 +1197,94 @@
                             </button>
                         </div>
                         <div class="p-6 overflow-y-auto max-h-[70vh]">
-                            <table class="w-full text-sm">
-                                <thead class="bg-gray-800 text-white">
-                                    <tr>
-                                        <th class="py-2 px-3 text-left">No</th>
-                                        <th class="py-2 px-3 text-left">Kode</th>
-                                        <th class="py-2 px-3 text-left">Nama Artikel</th>
-                                        <th class="py-2 px-3 text-center" colspan="2">DDD</th>
-                                        <th class="py-2 px-3 text-center" colspan="2">LJBB</th>
-                                        <th class="py-2 px-3 text-center" colspan="2">MBB</th>
-                                        <th class="py-2 px-3 text-center" colspan="2">TOTAL</th>
-                                    </tr>
-                                    <tr class="bg-gray-700 text-white text-xs">
-                                        <th></th>
-                                        <th></th>
-                                        <th></th>
-                                        <th class="py-1 px-2">Sis/Fis</th>
-                                        <th class="py-1 px-2">Selisih</th>
-                                        <th class="py-1 px-2">Sis/Fis</th>
-                                        <th class="py-1 px-2">Selisih</th>
-                                        <th class="py-1 px-2">Sis/Fis</th>
-                                        <th class="py-1 px-2">Selisih</th>
-                                        <th class="py-1 px-2">Sis/Fis</th>
-                                        <th class="py-1 px-2">Selisih</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
             `;
             
-            filteredItems.forEach((item, idx) => {
-                // Helper function to format selisih with color
-                const formatSelisih = (val) => {
-                    if (val === 0) return `<span class="text-gray-500">0</span>`;
-                    if (val > 0) return `<span class="text-blue-600 font-medium">+${val}</span>`;
-                    return `<span class="text-red-600 font-medium">${val}</span>`;
-                };
-                
-                // Highlight cells with selisih
-                const highlightDDD = item.selisihDDD !== 0 ? 'bg-yellow-100' : '';
-                const highlightLJBB = item.selisihLJBB !== 0 ? 'bg-yellow-100' : '';
-                const highlightMBB = item.selisihMBB !== 0 ? 'bg-yellow-100' : '';
-                const highlightTotal = item.selisihTotal !== 0 ? 'bg-yellow-100' : '';
-                
-                modalHtml += `
-                    <tr class="border-b ${idx % 2 === 0 ? '' : 'bg-gray-50'}">
-                        <td class="py-2 px-3">${idx + 1}</td>
-                        <td class="py-2 px-3 font-medium text-blue-600">${item.kode}</td>
-                        <td class="py-2 px-3">${item.nama}</td>
-                        <td class="py-2 px-3 text-center ${highlightDDD}">${item.sistemDDD}/${item.fisikDDD}</td>
-                        <td class="py-2 px-3 text-center ${highlightDDD}">${formatSelisih(item.selisihDDD)}</td>
-                        <td class="py-2 px-3 text-center ${highlightLJBB}">${item.sistemLJBB}/${item.fisikLJBB}</td>
-                        <td class="py-2 px-3 text-center ${highlightLJBB}">${formatSelisih(item.selisihLJBB)}</td>
-                        <td class="py-2 px-3 text-center ${highlightMBB}">${item.sistemMBB}/${item.fisikMBB}</td>
-                        <td class="py-2 px-3 text-center ${highlightMBB}">${formatSelisih(item.selisihMBB)}</td>
-                        <td class="py-2 px-3 text-center font-medium ${highlightTotal}">${item.sistemTotal}/${item.fisikTotal}</td>
-                        <td class="py-2 px-3 text-center font-medium ${highlightTotal}">${formatSelisih(item.selisihTotal)}</td>
-                    </tr>
-                `;
-            });
-            
-            modalHtml += `
-                                </tbody>
-                            </table>
-            `;
-            
-            // Add summary for selisih breakdown
-            if (type === 'plus' || type === 'minus') {
-                let summaryHtml = `
-                    <div class="mt-4 p-4 ${type === 'plus' ? 'bg-blue-50' : 'bg-red-50'} rounded-lg">
-                        <h4 class="font-semibold mb-2">${type === 'plus' ? '📈 Detail Selisih Lebih' : '📉 Detail Selisih Kurang'}</h4>
-                        <div class="grid grid-cols-3 gap-4 text-sm">
-                `;
-                
-                let totalDDD = 0, totalLJBB = 0, totalMBB = 0;
+            if (filteredItems.length === 0) {
+                modalHtml += `<p class="text-center text-gray-400 py-8">Tidak ada artikel dengan selisih</p>`;
+            } else {
+                // Calculate totals
+                let totalPlus = 0, totalMinus = 0;
                 filteredItems.forEach(item => {
-                    if (type === 'plus') {
-                        if (item.selisihDDD > 0) totalDDD += item.selisihDDD;
-                        if (item.selisihLJBB > 0) totalLJBB += item.selisihLJBB;
-                        if (item.selisihMBB > 0) totalMBB += item.selisihMBB;
-                    } else {
-                        if (item.selisihDDD < 0) totalDDD += item.selisihDDD;
-                        if (item.selisihLJBB < 0) totalLJBB += item.selisihLJBB;
-                        if (item.selisihMBB < 0) totalMBB += item.selisihMBB;
-                    }
+                    let sel;
+                    if (entity === 'DDD') sel = item.selisihDDD;
+                    else if (entity === 'LJBB') sel = item.selisihLJBB;
+                    else if (entity === 'MBB') sel = item.selisihMBB;
+                    else sel = item.selisihTotal;
+                    
+                    if (sel > 0) totalPlus += sel;
+                    else totalMinus += sel;
                 });
                 
-                summaryHtml += `
-                            <div class="text-center p-2 bg-white rounded">
-                                <p class="font-bold ${type === 'plus' ? 'text-blue-600' : 'text-red-600'}">${type === 'plus' ? '+' : ''}${totalDDD}</p>
-                                <p class="text-xs text-gray-500">Total DDD</p>
-                            </div>
-                            <div class="text-center p-2 bg-white rounded">
-                                <p class="font-bold ${type === 'plus' ? 'text-blue-600' : 'text-red-600'}">${type === 'plus' ? '+' : ''}${totalLJBB}</p>
-                                <p class="text-xs text-gray-500">Total LJBB</p>
-                            </div>
-                            <div class="text-center p-2 bg-white rounded">
-                                <p class="font-bold ${type === 'plus' ? 'text-blue-600' : 'text-red-600'}">${type === 'plus' ? '+' : ''}${totalMBB}</p>
-                                <p class="text-xs text-gray-500">Total MBB</p>
-                            </div>
+                // Summary cards
+                modalHtml += `
+                    <div class="grid grid-cols-3 gap-4 mb-4">
+                        <div class="bg-blue-50 rounded-lg p-3 text-center">
+                            <p class="text-2xl font-bold text-blue-600">+${totalPlus}</p>
+                            <p class="text-xs text-gray-500">Total Lebih</p>
+                        </div>
+                        <div class="bg-red-50 rounded-lg p-3 text-center">
+                            <p class="text-2xl font-bold text-red-600">${totalMinus}</p>
+                            <p class="text-xs text-gray-500">Total Kurang</p>
+                        </div>
+                        <div class="bg-gray-100 rounded-lg p-3 text-center">
+                            <p class="text-2xl font-bold ${(totalPlus + totalMinus) >= 0 ? 'text-blue-600' : 'text-red-600'}">${(totalPlus + totalMinus) >= 0 ? '+' : ''}${totalPlus + totalMinus}</p>
+                            <p class="text-xs text-gray-500">Net Selisih</p>
                         </div>
                     </div>
                 `;
                 
-                modalHtml += summaryHtml;
+                modalHtml += `
+                    <table class="w-full text-sm">
+                        <thead class="bg-gray-800 text-white">
+                            <tr>
+                                <th class="py-2 px-3 text-left">No</th>
+                                <th class="py-2 px-3 text-left">Kode</th>
+                                <th class="py-2 px-3 text-left">Nama Artikel</th>
+                                <th class="py-2 px-3 text-center">Sistem</th>
+                                <th class="py-2 px-3 text-center">Fisik</th>
+                                <th class="py-2 px-3 text-center">Selisih</th>
+                                <th class="py-2 px-3 text-center">Keterangan</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                `;
+                
+                filteredItems.forEach((item, idx) => {
+                    // Get values based on entity
+                    let sistem, fisik, selisih;
+                    if (entity === 'DDD') {
+                        sistem = item.sistemDDD; fisik = item.fisikDDD; selisih = item.selisihDDD;
+                    } else if (entity === 'LJBB') {
+                        sistem = item.sistemLJBB; fisik = item.fisikLJBB; selisih = item.selisihLJBB;
+                    } else if (entity === 'MBB') {
+                        sistem = item.sistemMBB; fisik = item.fisikMBB; selisih = item.selisihMBB;
+                    } else {
+                        sistem = item.sistemTotal; fisik = item.fisikTotal; selisih = item.selisihTotal;
+                    }
+                    
+                    const selisihClass = selisih > 0 ? 'text-blue-600 bg-blue-50' : 'text-red-600 bg-red-50';
+                    const selisihText = selisih > 0 ? `+${selisih}` : selisih;
+                    const keterangan = selisih > 0 ? 
+                        '<span class="px-2 py-1 rounded text-xs bg-blue-100 text-blue-700">LEBIH</span>' : 
+                        '<span class="px-2 py-1 rounded text-xs bg-red-100 text-red-700">KURANG</span>';
+                    
+                    modalHtml += `
+                        <tr class="border-b ${idx % 2 === 0 ? '' : 'bg-gray-50'}">
+                            <td class="py-2 px-3">${idx + 1}</td>
+                            <td class="py-2 px-3 font-medium text-blue-600">${item.kode}</td>
+                            <td class="py-2 px-3">${item.nama}</td>
+                            <td class="py-2 px-3 text-center">${sistem}</td>
+                            <td class="py-2 px-3 text-center">${fisik}</td>
+                            <td class="py-2 px-3 text-center font-bold ${selisihClass}">${selisihText}</td>
+                            <td class="py-2 px-3 text-center">${keterangan}</td>
+                        </tr>
+                    `;
+                });
+                
+                modalHtml += `
+                        </tbody>
+                    </table>
+                `;
             }
             
             modalHtml += `

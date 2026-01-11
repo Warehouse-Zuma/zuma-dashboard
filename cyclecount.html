@@ -262,7 +262,7 @@
     <!-- Footer -->
     <footer class="zuma-dark text-white py-4 mt-8">
         <div class="container mx-auto px-4 text-center text-sm text-gray-400">
-            ZUMA Cycle Count v1.4 | Stock Opname System
+            ZUMA Cycle Count v1.5 | Stock Opname System
         </div>
     </footer>
 
@@ -932,11 +932,15 @@
                 // Add cache-busting timestamp to prevent cached results
                 const cacheBuster = new Date().getTime();
                 const response = await fetch(`${APPS_SCRIPT_URL}?t=${cacheBuster}`, {
-                    cache: 'no-store',
-                    headers: {
-                        'Cache-Control': 'no-cache'
-                    }
+                    method: 'GET',
+                    mode: 'cors',
+                    redirect: 'follow'
                 });
+                
+                if (!response.ok) {
+                    throw new Error('Network response was not ok');
+                }
+                
                 const result = await response.json();
                 
                 if (result.success && result.data && result.data.length > 1) {
@@ -953,12 +957,14 @@
                 }
             } catch (error) {
                 console.error('Error loading history:', error);
+                console.error('Apps Script URL:', APPS_SCRIPT_URL);
                 historySection.innerHTML = `
                     <div class="text-center py-8 text-red-400">
                         <svg class="w-12 h-12 mx-auto mb-2 text-red-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
                         </svg>
                         <p>Gagal memuat riwayat</p>
+                        <p class="text-xs text-gray-400 mt-1">${error.message}</p>
                         <button onclick="loadHistory()" class="mt-2 text-sm text-blue-600 hover:underline">Coba lagi</button>
                     </div>
                 `;

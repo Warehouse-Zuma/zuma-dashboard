@@ -1,0 +1,487 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ZUMA - Monitoring IG & Raw Material</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        .zuma-dark { background-color: #002A3A; }
+        .zuma-green { background-color: #00E273; }
+        .zuma-dark-text { color: #002A3A; }
+        .zuma-green-text { color: #00E273; }
+        .loading-spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #00E273;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        .scrollbar-thin::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        .scrollbar-thin::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 3px;
+        }
+    </style>
+</head>
+<body class="bg-gray-100 min-h-screen">
+    <!-- Loading Overlay -->
+    <div id="loadingOverlay" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div class="bg-white rounded-xl p-8 flex flex-col items-center shadow-2xl">
+            <div class="loading-spinner mb-4"></div>
+            <p class="text-gray-600 font-medium">Memuat data dari Google Sheets...</p>
+        </div>
+    </div>
+
+    <!-- Header -->
+    <header class="zuma-dark text-white py-4 px-6 shadow-lg sticky top-0 z-40">
+        <div class="max-w-7xl mx-auto flex justify-between items-center">
+            <div class="flex items-center gap-4">
+                <a href="index.html" class="flex items-center gap-2 hover:opacity-80 transition">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path>
+                    </svg>
+                    <span class="text-sm">Dashboard</span>
+                </a>
+                <div class="h-6 w-px bg-gray-600"></div>
+                <h1 class="text-xl font-bold flex items-center gap-2">
+                    🏭 Monitoring IG & Raw Material
+                </h1>
+            </div>
+            <div class="flex items-center gap-4">
+                <span id="lastUpdate" class="text-gray-400 text-sm hidden md:block"></span>
+                <button onclick="refreshData()" class="flex items-center gap-2 px-4 py-2 zuma-green rounded-lg font-medium zuma-dark-text hover:opacity-90 transition">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
+                    </svg>
+                    Refresh
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <main class="max-w-7xl mx-auto p-4 md:p-6">
+        <!-- Summary Cards -->
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+            <!-- Total Item -->
+            <div class="bg-white rounded-xl p-4 shadow-sm border-l-4 border-teal-500">
+                <div class="flex justify-between items-start">
+                    <div>
+                        <p class="text-gray-500 text-sm">Total Item</p>
+                        <h2 id="totalItem" class="text-2xl md:text-3xl font-bold mt-1 text-teal-600">0</h2>
+                        <p id="totalQty" class="text-gray-400 text-xs mt-1">0 pairs</p>
+                    </div>
+                    <div class="p-2 rounded-lg bg-teal-100">
+                        <span class="text-xl">📦</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Done -->
+            <div class="bg-white rounded-xl p-4 shadow-sm border-l-4 border-green-500">
+                <div class="flex justify-between items-start">
+                    <div>
+                        <p class="text-gray-500 text-sm">Done</p>
+                        <h2 id="doneCount" class="text-2xl md:text-3xl font-bold mt-1 text-green-600">0</h2>
+                        <p id="doneQty" class="text-gray-400 text-xs mt-1">0 pairs</p>
+                    </div>
+                    <div class="p-2 rounded-lg bg-green-100">
+                        <span class="text-xl">✅</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Packing -->
+            <div class="bg-white rounded-xl p-4 shadow-sm border-l-4 border-yellow-500">
+                <div class="flex justify-between items-start">
+                    <div>
+                        <p class="text-gray-500 text-sm">Packing</p>
+                        <h2 id="packingCount" class="text-2xl md:text-3xl font-bold mt-1 text-yellow-600">0</h2>
+                        <p id="packingQty" class="text-gray-400 text-xs mt-1">0 pairs</p>
+                    </div>
+                    <div class="p-2 rounded-lg bg-yellow-100">
+                        <span class="text-xl">📦</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Outstanding -->
+            <div class="bg-white rounded-xl p-4 shadow-sm border-l-4 border-red-500">
+                <div class="flex justify-between items-start">
+                    <div>
+                        <p class="text-gray-500 text-sm">Outstanding</p>
+                        <h2 id="outstandingCount" class="text-2xl md:text-3xl font-bold mt-1 text-red-600">0</h2>
+                        <p id="outstandingQty" class="text-gray-400 text-xs mt-1">0 pairs</p>
+                    </div>
+                    <div class="p-2 rounded-lg bg-red-100">
+                        <span class="text-xl">⏳</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Filter & Search -->
+        <div class="bg-white rounded-xl shadow-sm p-4 md:p-6 mb-6">
+            <div class="flex flex-wrap gap-4 items-center justify-between">
+                <div class="flex flex-wrap gap-2">
+                    <button onclick="filterByStatus('all')" id="filterAll" class="px-4 py-2 rounded-lg text-sm font-medium zuma-dark text-white">
+                        Semua
+                    </button>
+                    <button onclick="filterByStatus('Done')" id="filterDone" class="px-4 py-2 rounded-lg text-sm font-medium bg-gray-100 text-gray-700 hover:bg-gray-200">
+                        ✅ Done
+                    </button>
+                    <button onclick="filterByStatus('Packing')" id="filterPacking" class="px-4 py-2 rounded-lg text-sm font-medium bg-gray-100 text-gray-700 hover:bg-gray-200">
+                        📦 Packing
+                    </button>
+                    <button onclick="filterByStatus('Outstanding')" id="filterOutstanding" class="px-4 py-2 rounded-lg text-sm font-medium bg-gray-100 text-gray-700 hover:bg-gray-200">
+                        ⏳ Outstanding
+                    </button>
+                </div>
+                <div class="flex gap-4 items-center w-full md:w-auto">
+                    <select id="jenisFilter" onchange="applyFilters()" class="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:outline-none bg-white text-sm">
+                        <option value="">Semua Jenis</option>
+                        <option value="Sandal">Sandal</option>
+                        <option value="Insole">Insole</option>
+                    </select>
+                    <input type="text" id="searchInput" placeholder="Cari kode/deskripsi..." 
+                        class="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:outline-none text-sm flex-1 md:w-64"
+                        onkeyup="applyFilters()">
+                </div>
+            </div>
+        </div>
+
+        <!-- Data Table -->
+        <div class="bg-white rounded-xl shadow-sm overflow-hidden">
+            <div class="px-6 py-4 border-b flex justify-between items-center">
+                <h3 class="font-bold text-gray-800">📋 Data Intermedied Good & Raw Material</h3>
+                <span id="tableInfo" class="text-sm text-gray-500">Menampilkan 0 item</span>
+            </div>
+            <div class="overflow-x-auto scrollbar-thin">
+                <table class="w-full">
+                    <thead class="bg-gray-50">
+                        <tr>
+                            <th class="text-left py-3 px-4 text-sm font-semibold text-gray-600">No</th>
+                            <th class="text-left py-3 px-4 text-sm font-semibold text-gray-600">Jenis</th>
+                            <th class="text-left py-3 px-4 text-sm font-semibold text-gray-600">Kode Artikel</th>
+                            <th class="text-left py-3 px-4 text-sm font-semibold text-gray-600">Deskripsi</th>
+                            <th class="text-right py-3 px-4 text-sm font-semibold text-gray-600">Qty (pair)</th>
+                            <th class="text-center py-3 px-4 text-sm font-semibold text-gray-600">Masuk Supplier</th>
+                            <th class="text-center py-3 px-4 text-sm font-semibold text-gray-600">Kirim HJS</th>
+                            <th class="text-center py-3 px-4 text-sm font-semibold text-gray-600">Masuk WHS</th>
+                            <th class="text-center py-3 px-4 text-sm font-semibold text-gray-600">Status</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tableBody">
+                        <!-- Data akan diisi oleh JavaScript -->
+                    </tbody>
+                </table>
+            </div>
+            <div class="px-6 py-4 border-t bg-gray-50 flex justify-between items-center">
+                <span id="paginationInfo" class="text-sm text-gray-500">Halaman 1</span>
+                <div class="flex gap-2">
+                    <button onclick="prevPage()" id="prevBtn" class="px-3 py-1.5 bg-gray-200 rounded-lg hover:bg-gray-300 disabled:opacity-50 text-sm flex items-center gap-1" disabled>
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path>
+                        </svg>
+                        Prev
+                    </button>
+                    <button onclick="nextPage()" id="nextBtn" class="px-3 py-1.5 bg-gray-200 rounded-lg hover:bg-gray-300 disabled:opacity-50 text-sm flex items-center gap-1">
+                        Next
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="zuma-dark mt-8 py-6">
+        <div class="max-w-7xl mx-auto px-4 flex flex-col md:flex-row justify-between items-center gap-4">
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-lg zuma-green flex items-center justify-center">
+                    <span class="text-lg font-bold zuma-dark-text">Z</span>
+                </div>
+                <div>
+                    <p class="text-white font-semibold">ZUMA Dashboard</p>
+                    <p class="text-gray-400 text-xs">Monitoring IG & Raw Material v1.0</p>
+                </div>
+            </div>
+            <p class="text-gray-400 text-sm">© 2026 ZUMA Sandal. All rights reserved.</p>
+        </div>
+    </footer>
+
+    <script>
+        // ==========================================
+        // KONFIGURASI
+        // ==========================================
+        const SPREADSHEET_ID = '1JDO388Ee02a2qYg-39ySUxYkV48m-LYvPgIT32FvE5s';
+        const API_KEY = 'AIzaSyBLmrYiydwSWdipHjUUnpXuC4Ruc_fEB7A';
+        const SHEET_NAME = 'table';
+        
+        // Data
+        let allItems = [];
+        let filteredItems = [];
+        let currentFilter = 'all';
+        let currentPage = 1;
+        const itemsPerPage = 20;
+        
+        // ==========================================
+        // FUNGSI LOAD DATA
+        // ==========================================
+        function showLoading(show) {
+            document.getElementById('loadingOverlay').style.display = show ? 'flex' : 'none';
+        }
+        
+        async function loadData() {
+            showLoading(true);
+            
+            try {
+                const url = `https://sheets.googleapis.com/v4/spreadsheets/${SPREADSHEET_ID}/values/${encodeURIComponent(SHEET_NAME)}!A2:I1000?key=${API_KEY}`;
+                const response = await fetch(url);
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                
+                const data = await response.json();
+                const rows = data.values || [];
+                
+                console.log('Data loaded:', rows.length, 'rows');
+                
+                // Parse data
+                allItems = rows.map((row, idx) => ({
+                    no: parseInt(row[0]) || (idx + 1),
+                    jenis: (row[1] || '').trim(),
+                    kode: (row[2] || '').trim(),
+                    deskripsi: (row[3] || '').trim(),
+                    qty: parseInt(String(row[4] || '0').replace(/,/g, '')) || 0,
+                    tglMasukSupplier: (row[5] || '').trim(),
+                    tglKirimHJS: (row[6] || '').trim(),
+                    tglMasukWHS: (row[7] || '').trim(),
+                    status: (row[8] || '').trim()
+                })).filter(item => item.kode || item.deskripsi);
+                
+                // Update summary
+                updateSummary();
+                
+                // Apply filters
+                applyFilters();
+                
+                // Update timestamp
+                updateTimestamp();
+                
+            } catch (error) {
+                console.error('Error loading data:', error);
+                document.getElementById('tableBody').innerHTML = `
+                    <tr>
+                        <td colspan="9" class="py-8 text-center text-red-500">
+                            <p class="text-lg mb-2">❌ Gagal memuat data</p>
+                            <p class="text-sm text-gray-400">${error.message}</p>
+                            <button onclick="loadData()" class="mt-3 px-4 py-2 bg-teal-600 text-white rounded-lg hover:bg-teal-700">
+                                Coba Lagi
+                            </button>
+                        </td>
+                    </tr>
+                `;
+            } finally {
+                showLoading(false);
+            }
+        }
+        
+        function updateTimestamp() {
+            const now = new Date();
+            const options = { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' };
+            document.getElementById('lastUpdate').textContent = `Update: ${now.toLocaleDateString('id-ID', options)}`;
+        }
+        
+        // ==========================================
+        // SUMMARY
+        // ==========================================
+        function updateSummary() {
+            const done = allItems.filter(i => i.status.toLowerCase() === 'done');
+            const packing = allItems.filter(i => i.status.toLowerCase() === 'packing');
+            const outstanding = allItems.filter(i => i.status.toLowerCase() === 'outstanding');
+            
+            const totalQty = allItems.reduce((sum, i) => sum + i.qty, 0);
+            const doneQty = done.reduce((sum, i) => sum + i.qty, 0);
+            const packingQty = packing.reduce((sum, i) => sum + i.qty, 0);
+            const outstandingQty = outstanding.reduce((sum, i) => sum + i.qty, 0);
+            
+            document.getElementById('totalItem').textContent = allItems.length.toLocaleString('id-ID');
+            document.getElementById('totalQty').textContent = totalQty.toLocaleString('id-ID') + ' pairs';
+            
+            document.getElementById('doneCount').textContent = done.length.toLocaleString('id-ID');
+            document.getElementById('doneQty').textContent = doneQty.toLocaleString('id-ID') + ' pairs';
+            
+            document.getElementById('packingCount').textContent = packing.length.toLocaleString('id-ID');
+            document.getElementById('packingQty').textContent = packingQty.toLocaleString('id-ID') + ' pairs';
+            
+            document.getElementById('outstandingCount').textContent = outstanding.length.toLocaleString('id-ID');
+            document.getElementById('outstandingQty').textContent = outstandingQty.toLocaleString('id-ID') + ' pairs';
+        }
+        
+        // ==========================================
+        // FILTER & SEARCH
+        // ==========================================
+        function filterByStatus(status) {
+            currentFilter = status;
+            currentPage = 1;
+            
+            // Update button styles
+            const buttons = ['All', 'Done', 'Packing', 'Outstanding'];
+            buttons.forEach(btn => {
+                const el = document.getElementById(`filter${btn}`);
+                if (btn.toLowerCase() === status.toLowerCase() || (status === 'all' && btn === 'All')) {
+                    el.className = 'px-4 py-2 rounded-lg text-sm font-medium zuma-dark text-white';
+                } else {
+                    el.className = 'px-4 py-2 rounded-lg text-sm font-medium bg-gray-100 text-gray-700 hover:bg-gray-200';
+                }
+            });
+            
+            applyFilters();
+        }
+        
+        function applyFilters() {
+            const searchTerm = (document.getElementById('searchInput')?.value || '').toLowerCase();
+            const jenisFilter = document.getElementById('jenisFilter')?.value || '';
+            
+            filteredItems = allItems.filter(item => {
+                // Filter by status
+                if (currentFilter !== 'all' && item.status.toLowerCase() !== currentFilter.toLowerCase()) {
+                    return false;
+                }
+                
+                // Filter by jenis
+                if (jenisFilter && item.jenis !== jenisFilter) {
+                    return false;
+                }
+                
+                // Filter by search
+                if (searchTerm) {
+                    const matchKode = item.kode.toLowerCase().includes(searchTerm);
+                    const matchDeskripsi = item.deskripsi.toLowerCase().includes(searchTerm);
+                    if (!matchKode && !matchDeskripsi) {
+                        return false;
+                    }
+                }
+                
+                return true;
+            });
+            
+            currentPage = 1;
+            renderTable();
+        }
+        
+        // ==========================================
+        // RENDER TABLE
+        // ==========================================
+        function renderTable() {
+            const tbody = document.getElementById('tableBody');
+            const start = (currentPage - 1) * itemsPerPage;
+            const end = start + itemsPerPage;
+            const pageItems = filteredItems.slice(start, end);
+            
+            if (pageItems.length === 0) {
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="9" class="py-8 text-center text-gray-400">
+                            <p class="text-lg mb-1">📭 Tidak ada data</p>
+                            <p class="text-sm">Coba ubah filter atau kata kunci pencarian</p>
+                        </td>
+                    </tr>
+                `;
+            } else {
+                tbody.innerHTML = pageItems.map((item, idx) => {
+                    // Status badge
+                    let statusBadge = '';
+                    const statusLower = item.status.toLowerCase();
+                    if (statusLower === 'done') {
+                        statusBadge = '<span class="px-3 py-1 rounded-full text-xs font-medium bg-green-500 text-white">Done</span>';
+                    } else if (statusLower === 'packing') {
+                        statusBadge = '<span class="px-3 py-1 rounded-full text-xs font-medium bg-yellow-400 text-gray-800">Packing</span>';
+                    } else if (statusLower === 'outstanding') {
+                        statusBadge = '<span class="px-3 py-1 rounded-full text-xs font-medium bg-red-500 text-white">Outstanding</span>';
+                    } else {
+                        statusBadge = `<span class="px-3 py-1 rounded-full text-xs font-medium bg-gray-200 text-gray-600">${item.status || '-'}</span>`;
+                    }
+                    
+                    // Jenis badge
+                    const jenisBadge = item.jenis === 'Sandal' 
+                        ? '<span class="px-2 py-1 rounded text-xs bg-blue-100 text-blue-700">Sandal</span>'
+                        : item.jenis === 'Insole'
+                        ? '<span class="px-2 py-1 rounded text-xs bg-purple-100 text-purple-700">Insole</span>'
+                        : `<span class="px-2 py-1 rounded text-xs bg-gray-100 text-gray-600">${item.jenis}</span>`;
+                    
+                    return `
+                        <tr class="border-b hover:bg-gray-50 ${idx % 2 === 0 ? '' : 'bg-gray-50'}">
+                            <td class="py-3 px-4 text-sm text-gray-500">${start + idx + 1}</td>
+                            <td class="py-3 px-4 text-sm">${jenisBadge}</td>
+                            <td class="py-3 px-4 text-sm font-medium text-teal-600">${item.kode}</td>
+                            <td class="py-3 px-4 text-sm">${item.deskripsi}</td>
+                            <td class="py-3 px-4 text-sm text-right font-medium">${item.qty.toLocaleString('id-ID')}</td>
+                            <td class="py-3 px-4 text-sm text-center text-gray-500">${item.tglMasukSupplier || '-'}</td>
+                            <td class="py-3 px-4 text-sm text-center text-gray-500">${item.tglKirimHJS || '-'}</td>
+                            <td class="py-3 px-4 text-sm text-center text-gray-500">${item.tglMasukWHS || '-'}</td>
+                            <td class="py-3 px-4 text-center">${statusBadge}</td>
+                        </tr>
+                    `;
+                }).join('');
+            }
+            
+            // Update info
+            const totalFiltered = filteredItems.length;
+            const totalPages = Math.ceil(totalFiltered / itemsPerPage) || 1;
+            document.getElementById('tableInfo').textContent = `Menampilkan ${pageItems.length} dari ${totalFiltered} item`;
+            document.getElementById('paginationInfo').textContent = `Halaman ${currentPage} dari ${totalPages}`;
+            
+            // Update pagination buttons
+            document.getElementById('prevBtn').disabled = currentPage <= 1;
+            document.getElementById('nextBtn').disabled = currentPage >= totalPages;
+        }
+        
+        // ==========================================
+        // PAGINATION
+        // ==========================================
+        function prevPage() {
+            if (currentPage > 1) {
+                currentPage--;
+                renderTable();
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+            }
+        }
+        
+        function nextPage() {
+            const totalPages = Math.ceil(filteredItems.length / itemsPerPage);
+            if (currentPage < totalPages) {
+                currentPage++;
+                renderTable();
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+            }
+        }
+        
+        // ==========================================
+        // REFRESH
+        // ==========================================
+        function refreshData() {
+            loadData();
+        }
+        
+        // ==========================================
+        // INIT
+        // ==========================================
+        document.addEventListener('DOMContentLoaded', () => {
+            loadData();
+        });
+    </script>
+</body>
+</html>

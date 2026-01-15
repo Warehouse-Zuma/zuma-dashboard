@@ -22,18 +22,9 @@
             0% { transform: rotate(0deg); }
             100% { transform: rotate(360deg); }
         }
-        .scrollbar-thin::-webkit-scrollbar {
-            width: 6px;
-            height: 6px;
-        }
-        .scrollbar-thin::-webkit-scrollbar-thumb {
-            background: #cbd5e1;
-            border-radius: 3px;
-        }
-        .modal-overlay {
-            background-color: rgba(0, 0, 0, 0.5);
-            backdrop-filter: blur(4px);
-        }
+        .scrollbar-thin::-webkit-scrollbar { width: 6px; height: 6px; }
+        .scrollbar-thin::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }
+        .modal-overlay { background-color: rgba(0, 0, 0, 0.5); backdrop-filter: blur(4px); }
     </style>
 </head>
 <body class="bg-gray-100 min-h-screen">
@@ -306,7 +297,7 @@
         const SPREADSHEET_ID = '1JDO388Ee02a2qYg-39ySUxYkV48m-LYvPgIT32FvE5s';
         const API_KEY = 'AIzaSyBLmrYiydwSWdipHjUUnpXuC4Ruc_fEB7A';
         const SHEET_NAME = 'IGRM';
-        const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzwdMx69P8ExTPftqtpdigbI3ciCY5nxIFb3ED2IlitCRCiZzfic6YqgPUFpAOl0jfncA/exec';
+        const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxW6pziZEjJ9qmeAX2w8wHJ8SarhqeI0-j9IFkGg_Q-nFlcZX_61fZX-Uf9Nt0KzMk-Zg/exec';
         
         let allItems = [];
         let filteredItems = [];
@@ -379,11 +370,13 @@
                 jenis: document.getElementById('inputJenis').value.trim(),
                 kode: document.getElementById('inputKode').value.toUpperCase().trim(),
                 deskripsi: document.getElementById('inputDeskripsi').value.trim(),
-                qty: parseInt(document.getElementById('inputQty').value),
+                qty: parseInt(document.getElementById('inputQty').value) || 0,
                 tglSupplier: formatDateForSheet(document.getElementById('inputTglSupplier').value),
                 tglHJS: formatDateForSheet(document.getElementById('inputTglHJS').value),
                 tglWarehouse: formatDateForSheet(document.getElementById('inputTglWarehouse').value)
             };
+            
+            console.log('Sending data:', data);
             
             document.getElementById('loadingOverlay').style.display = 'flex';
             document.getElementById('loadingText').textContent = 'Menyimpan data...';
@@ -397,8 +390,12 @@
                 });
                 
                 closeModal();
-                alert('✅ Data berhasil ditambahkan!');
-                setTimeout(() => loadData(), 1000);
+                alert('✅ Data berhasil ditambahkan!\n\nKlik OK untuk refresh data.');
+                
+                // Refresh setelah 1.5 detik
+                setTimeout(() => {
+                    loadData();
+                }, 1500);
                 
             } catch (error) {
                 console.error('Error:', error);
@@ -421,6 +418,8 @@
                 tglWarehouse: formatDateForSheet(document.getElementById('editTglWarehouse').value)
             };
             
+            console.log('Updating data:', data);
+            
             document.getElementById('loadingOverlay').style.display = 'flex';
             document.getElementById('loadingText').textContent = 'Mengupdate data...';
             
@@ -434,7 +433,10 @@
                 
                 closeEditModal();
                 alert('✅ Data berhasil diupdate!');
-                setTimeout(() => loadData(), 1000);
+                
+                setTimeout(() => {
+                    loadData();
+                }, 1500);
                 
             } catch (error) {
                 console.error('Error:', error);
@@ -462,6 +464,8 @@
                 
                 const data = await response.json();
                 const rows = data.values || [];
+                
+                console.log('Loaded rows:', rows.length);
                 
                 allItems = rows.map((row, idx) => ({
                     rowNum: idx + 2,
@@ -528,6 +532,17 @@
                 option.value = jenis;
                 datalist.appendChild(option);
             });
+            // Tambah default options
+            if (!jenisSet.has('Sandal')) {
+                const opt = document.createElement('option');
+                opt.value = 'Sandal';
+                datalist.appendChild(opt);
+            }
+            if (!jenisSet.has('Insole')) {
+                const opt = document.createElement('option');
+                opt.value = 'Insole';
+                datalist.appendChild(opt);
+            }
         }
         
         // ==========================================

@@ -283,7 +283,7 @@
                 </div>
                 <div>
                     <p class="text-white font-semibold">ZUMA Dashboard</p>
-                    <p class="text-gray-400 text-xs">Monitoring IG & Raw Material v3.0</p>
+                    <p class="text-gray-400 text-xs">Monitoring IG & Raw Material v4.0</p>
                 </div>
             </div>
             <p class="text-gray-400 text-sm">© 2026 ZUMA Sandal. All rights reserved.</p>
@@ -297,7 +297,9 @@
         const SPREADSHEET_ID = '1JDO388Ee02a2qYg-39ySUxYkV48m-LYvPgIT32FvE5s';
         const API_KEY = 'AIzaSyBLmrYiydwSWdipHjUUnpXuC4Ruc_fEB7A';
         const SHEET_NAME = 'IGRM';
-        const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxW6pziZEjJ9qmeAX2w8wHJ8SarhqeI0-j9IFkGg_Q-nFlcZX_61fZX-Uf9Nt0KzMk-Zg/exec';
+        
+        // PENTING: Ganti dengan URL Apps Script yang baru setelah deploy
+        const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzFR5QotHkZ4_aiTqGCmTV3sCoOsuy1BpFoh4u58rOIIPCYeHKx7bEqL3ed55EZOIkBqQ/exec';
         
         let allItems = [];
         let filteredItems = [];
@@ -365,8 +367,12 @@
         document.getElementById('inputForm').addEventListener('submit', async function(e) {
             e.preventDefault();
             
+            // Hitung nomor urut berikutnya
+            const nextNo = allItems.length > 0 ? Math.max(...allItems.map(i => i.no)) + 1 : 1;
+            
             const data = {
                 action: 'add',
+                no: nextNo,
                 jenis: document.getElementById('inputJenis').value.trim(),
                 kode: document.getElementById('inputKode').value.toUpperCase().trim(),
                 deskripsi: document.getElementById('inputDeskripsi').value.trim(),
@@ -382,7 +388,7 @@
             document.getElementById('loadingText').textContent = 'Menyimpan data...';
             
             try {
-                await fetch(APPS_SCRIPT_URL, {
+                const response = await fetch(APPS_SCRIPT_URL, {
                     method: 'POST',
                     mode: 'no-cors',
                     headers: { 'Content-Type': 'application/json' },
@@ -392,14 +398,15 @@
                 closeModal();
                 alert('✅ Data berhasil ditambahkan!\n\nKlik OK untuk refresh data.');
                 
-                // Refresh setelah 1.5 detik
+                // Refresh setelah 2 detik (memberikan waktu script untuk selesai)
                 setTimeout(() => {
                     loadData();
-                }, 1500);
+                }, 2000);
                 
             } catch (error) {
                 console.error('Error:', error);
-                alert('❌ Gagal menyimpan data!\n\n' + error.message);
+                alert('❌ Gagal menyimpan data: ' + error.message);
+            } finally {
                 document.getElementById('loadingOverlay').style.display = 'none';
             }
         });
@@ -410,18 +417,20 @@
         document.getElementById('editForm').addEventListener('submit', async function(e) {
             e.preventDefault();
             
+            const rowNum = document.getElementById('editRowNum').value;
+            
             const data = {
-                action: 'update',
-                rowNum: parseInt(document.getElementById('editRowNum').value),
+                action: 'edit',
+                rowNum: parseInt(rowNum),
                 tglSupplier: formatDateForSheet(document.getElementById('editTglSupplier').value),
                 tglHJS: formatDateForSheet(document.getElementById('editTglHJS').value),
                 tglWarehouse: formatDateForSheet(document.getElementById('editTglWarehouse').value)
             };
             
-            console.log('Updating data:', data);
+            console.log('Sending edit data:', data);
             
             document.getElementById('loadingOverlay').style.display = 'flex';
-            document.getElementById('loadingText').textContent = 'Mengupdate data...';
+            document.getElementById('loadingText').textContent = 'Menyimpan perubahan...';
             
             try {
                 await fetch(APPS_SCRIPT_URL, {
@@ -432,21 +441,22 @@
                 });
                 
                 closeEditModal();
-                alert('✅ Data berhasil diupdate!');
+                alert('✅ Data berhasil diupdate!\n\nKlik OK untuk refresh data.');
                 
                 setTimeout(() => {
                     loadData();
-                }, 1500);
+                }, 2000);
                 
             } catch (error) {
                 console.error('Error:', error);
-                alert('❌ Gagal mengupdate data!\n\n' + error.message);
+                alert('❌ Gagal mengupdate data: ' + error.message);
+            } finally {
                 document.getElementById('loadingOverlay').style.display = 'none';
             }
         });
         
         // ==========================================
-        // LOAD DATA
+        // FETCH DATA - DIPERLUAS RANGE-NYA
         // ==========================================
         function showLoading(show) {
             document.getElementById('loadingOverlay').style.display = show ? 'flex' : 'none';
@@ -457,7 +467,8 @@
             showLoading(true);
             
             try {
-                const url = `https://sheets.googleapis.com/v4/spreadsheets/${SPREADSHEET_ID}/values/${encodeURIComponent(SHEET_NAME)}!A2:I1000?key=${API_KEY}`;
+                // DIPERLUAS: dari A2:I1000 menjadi A2:I5000
+                const url = `https://sheets.googleapis.com/v4/spreadsheets/${SPREADSHEET_ID}/values/${encodeURIComponent(SHEET_NAME)}!A2:I5000?key=${API_KEY}`;
                 const response = await fetch(url);
                 
                 if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
@@ -467,18 +478,31 @@
                 
                 console.log('Loaded rows:', rows.length);
                 
-                allItems = rows.map((row, idx) => ({
-                    rowNum: idx + 2,
-                    no: parseInt(row[0]) || (idx + 1),
-                    jenis: (row[1] || '').trim(),
-                    kode: (row[2] || '').trim(),
-                    deskripsi: (row[3] || '').trim(),
-                    qty: parseInt(String(row[4] || '0').replace(/,/g, '')) || 0,
-                    tglMasukSupplier: (row[5] || '').trim(),
-                    tglKirimHJS: (row[6] || '').trim(),
-                    tglMasukWHS: (row[7] || '').trim(),
-                    status: (row[8] || '').trim()
-                })).filter(item => item.kode || item.deskripsi);
+                // Filter hanya row yang ada datanya (tidak kosong)
+                allItems = rows
+                    .map((row, idx) => ({
+                        rowNum: idx + 2,
+                        no: parseInt(row[0]) || 0,
+                        jenis: (row[1] || '').trim(),
+                        kode: (row[2] || '').trim(),
+                        deskripsi: (row[3] || '').trim(),
+                        qty: parseInt(String(row[4] || '0').replace(/,/g, '')) || 0,
+                        tglMasukSupplier: (row[5] || '').trim(),
+                        tglKirimHJS: (row[6] || '').trim(),
+                        tglMasukWHS: (row[7] || '').trim(),
+                        status: (row[8] || '').trim()
+                    }))
+                    .filter(item => item.kode || item.deskripsi || item.jenis); // Filter row kosong
+                
+                // Sort by No untuk memastikan urutan benar
+                allItems.sort((a, b) => a.no - b.no);
+                
+                // Re-index nomor urut untuk tampilan
+                allItems.forEach((item, idx) => {
+                    if (item.no === 0) item.no = idx + 1;
+                });
+                
+                console.log('Filtered items:', allItems.length);
                 
                 updateJenisFilter();
                 updateSummary();

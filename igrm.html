@@ -30,6 +30,10 @@
             background: #cbd5e1;
             border-radius: 3px;
         }
+        .modal-overlay {
+            background-color: rgba(0, 0, 0, 0.5);
+            backdrop-filter: blur(4px);
+        }
     </style>
 </head>
 <body class="bg-gray-100 min-h-screen">
@@ -37,7 +41,89 @@
     <div id="loadingOverlay" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
         <div class="bg-white rounded-xl p-8 flex flex-col items-center shadow-2xl">
             <div class="loading-spinner mb-4"></div>
-            <p class="text-gray-600 font-medium">Memuat data dari Google Sheets...</p>
+            <p id="loadingText" class="text-gray-600 font-medium">Memuat data dari Google Sheets...</p>
+        </div>
+    </div>
+
+    <!-- Modal Form Input -->
+    <div id="inputModal" class="fixed inset-0 modal-overlay flex items-center justify-center z-50 hidden">
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-lg mx-4 overflow-hidden">
+            <!-- Modal Header -->
+            <div class="zuma-dark text-white px-6 py-4 flex justify-between items-center">
+                <h3 class="text-lg font-bold flex items-center gap-2">
+                    ➕ Tambah Data Baru
+                </h3>
+                <button onclick="closeModal()" class="text-gray-300 hover:text-white transition">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                    </svg>
+                </button>
+            </div>
+            
+            <!-- Modal Body -->
+            <form id="inputForm" class="p-6 space-y-4">
+                <!-- Jenis -->
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Jenis Barang <span class="text-red-500">*</span></label>
+                    <select id="inputJenis" required class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500">
+                        <option value="">-- Pilih Jenis --</option>
+                        <option value="Sandal">Sandal</option>
+                        <option value="Insole">Insole</option>
+                    </select>
+                </div>
+
+                <!-- Kode Artikel -->
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Kode Artikel <span class="text-red-500">*</span></label>
+                    <input type="text" id="inputKode" required placeholder="Contoh: M1ZR02" 
+                        class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500">
+                </div>
+
+                <!-- Deskripsi -->
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Deskripsi Artikel <span class="text-red-500">*</span></label>
+                    <input type="text" id="inputDeskripsi" required placeholder="Contoh: MEN ZORRO 2, MIDNIGHT BLUE" 
+                        class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500">
+                </div>
+
+                <!-- Qty -->
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Qty (pair) <span class="text-red-500">*</span></label>
+                    <input type="number" id="inputQty" required min="1" placeholder="Contoh: 1200" 
+                        class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500">
+                </div>
+
+                <!-- Tanggal Masuk Supplier -->
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Tanggal Masuk dari Supplier <span class="text-red-500">*</span></label>
+                    <input type="date" id="inputTglSupplier" required 
+                        class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500">
+                </div>
+
+                <!-- Tanggal Kirim HJS -->
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Tanggal Kirim ke Gudang HJS <span class="text-gray-400">(opsional)</span></label>
+                    <input type="date" id="inputTglHJS" 
+                        class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500">
+                </div>
+
+                <!-- Tanggal Masuk Warehouse -->
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Tanggal Masuk ke Warehouse <span class="text-gray-400">(opsional)</span></label>
+                    <input type="date" id="inputTglWarehouse" 
+                        class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500">
+                </div>
+
+                <!-- Buttons -->
+                <div class="flex gap-3 pt-4">
+                    <button type="button" onclick="closeModal()" class="flex-1 px-4 py-2.5 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition font-medium">
+                        Batal
+                    </button>
+                    <button type="submit" class="flex-1 px-4 py-2.5 zuma-green rounded-lg zuma-dark-text hover:opacity-90 transition font-medium">
+                        💾 Simpan Data
+                    </button>
+                </div>
+            </form>
         </div>
     </div>
 
@@ -56,8 +142,14 @@
                     🏭 Monitoring IG & Raw Material
                 </h1>
             </div>
-            <div class="flex items-center gap-4">
+            <div class="flex items-center gap-3">
                 <span id="lastUpdate" class="text-gray-400 text-sm hidden md:block"></span>
+                <button onclick="openModal()" class="flex items-center gap-2 px-4 py-2 bg-white rounded-lg font-medium text-teal-600 hover:bg-gray-100 transition">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+                    </svg>
+                    Tambah Data
+                </button>
                 <button onclick="refreshData()" class="flex items-center gap-2 px-4 py-2 zuma-green rounded-lg font-medium zuma-dark-text hover:opacity-90 transition">
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
@@ -213,7 +305,7 @@
                 </div>
                 <div>
                     <p class="text-white font-semibold">ZUMA Dashboard</p>
-                    <p class="text-gray-400 text-xs">Monitoring IG & Raw Material v1.0</p>
+                    <p class="text-gray-400 text-xs">Monitoring IG & Raw Material v2.0</p>
                 </div>
             </div>
             <p class="text-gray-400 text-sm">© 2026 ZUMA Sandal. All rights reserved.</p>
@@ -227,6 +319,7 @@
         const SPREADSHEET_ID = '1JDO388Ee02a2qYg-39ySUxYkV48m-LYvPgIT32FvE5s';
         const API_KEY = 'AIzaSyBLmrYiydwSWdipHjUUnpXuC4Ruc_fEB7A';
         const SHEET_NAME = 'IGRM';
+        const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzGNbLB3njEGtlgzKqYmnhn_nM4R90jil_R8D3q8ZySWlZlLLg74OwM8ZLGiF2UT0JQwg/exec';
         
         // Data
         let allItems = [];
@@ -236,10 +329,87 @@
         const itemsPerPage = 20;
         
         // ==========================================
+        // MODAL FUNCTIONS
+        // ==========================================
+        function openModal() {
+            document.getElementById('inputModal').classList.remove('hidden');
+            document.body.style.overflow = 'hidden';
+        }
+        
+        function closeModal() {
+            document.getElementById('inputModal').classList.add('hidden');
+            document.body.style.overflow = 'auto';
+            document.getElementById('inputForm').reset();
+        }
+        
+        // ==========================================
+        // FORMAT TANGGAL
+        // ==========================================
+        function formatDateForSheet(dateString) {
+            if (!dateString) return '';
+            const date = new Date(dateString);
+            const day = String(date.getDate()).padStart(2, '0');
+            const month = String(date.getMonth() + 1).padStart(2, '0');
+            const year = date.getFullYear();
+            return `${day}/${month}/${year}`;
+        }
+        
+        // ==========================================
+        // SUBMIT FORM
+        // ==========================================
+        document.getElementById('inputForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const data = {
+                jenis: document.getElementById('inputJenis').value,
+                kode: document.getElementById('inputKode').value.toUpperCase(),
+                deskripsi: document.getElementById('inputDeskripsi').value,
+                qty: parseInt(document.getElementById('inputQty').value),
+                tglSupplier: formatDateForSheet(document.getElementById('inputTglSupplier').value),
+                tglHJS: formatDateForSheet(document.getElementById('inputTglHJS').value),
+                tglWarehouse: formatDateForSheet(document.getElementById('inputTglWarehouse').value)
+            };
+            
+            // Show loading
+            document.getElementById('loadingOverlay').style.display = 'flex';
+            document.getElementById('loadingText').textContent = 'Menyimpan data...';
+            
+            try {
+                const response = await fetch(APPS_SCRIPT_URL, {
+                    method: 'POST',
+                    mode: 'no-cors',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(data)
+                });
+                
+                // Karena mode no-cors, kita tidak bisa baca response
+                // Tapi biasanya berhasil kalau tidak ada error
+                
+                closeModal();
+                
+                // Tampilkan notifikasi sukses
+                alert('✅ Data berhasil ditambahkan!\n\nData akan muncul setelah refresh.');
+                
+                // Refresh data
+                setTimeout(() => {
+                    loadData();
+                }, 1000);
+                
+            } catch (error) {
+                console.error('Error:', error);
+                alert('❌ Gagal menyimpan data!\n\n' + error.message);
+                document.getElementById('loadingOverlay').style.display = 'none';
+            }
+        });
+        
+        // ==========================================
         // FUNGSI LOAD DATA
         // ==========================================
         function showLoading(show) {
             document.getElementById('loadingOverlay').style.display = show ? 'flex' : 'none';
+            document.getElementById('loadingText').textContent = 'Memuat data dari Google Sheets...';
         }
         
         async function loadData() {

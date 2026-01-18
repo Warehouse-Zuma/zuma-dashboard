@@ -65,25 +65,39 @@
                     <p class="text-gray-400 text-sm">Monitoring Stok Multi-Entitas Real-time</p>
                 </div>
             </div>
-            <div class="flex items-center gap-4">
-                <span id="lastUpdate" class="text-gray-400 text-sm hidden md:block"></span>
-                <a href="igrm.html" class="flex items-center gap-2 px-4 py-2 bg-teal-600 rounded-lg font-medium text-white hover:bg-teal-700 transition">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"></path>
-                    </svg>
-                    <span class="hidden md:inline">IG & RM</span>
-                </a>
-                <a href="cyclecount.html" class="flex items-center gap-2 px-4 py-2 bg-purple-600 rounded-lg font-medium text-white hover:bg-purple-700 transition">
+            <div class="flex items-center gap-2 md:gap-3 flex-wrap justify-end">
+                <span id="lastUpdate" class="text-gray-400 text-sm hidden lg:block"></span>
+                
+                <!-- Tombol Cycle Count -->
+                <a href="cyclecount.html" class="flex items-center gap-2 px-3 py-2 bg-purple-600 rounded-lg font-medium text-white hover:bg-purple-700 transition text-sm">
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"></path>
                     </svg>
                     <span class="hidden md:inline">Cycle Count</span>
                 </a>
-                <button onclick="refreshData()" class="flex items-center gap-2 px-4 py-2 zuma-green rounded-lg font-medium zuma-dark-text hover:opacity-90 transition">
+                
+                <!-- Tombol IGRM -->
+                <a href="igrm.html" class="flex items-center gap-2 px-3 py-2 bg-teal-600 rounded-lg font-medium text-white hover:bg-teal-700 transition text-sm">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path>
+                    </svg>
+                    <span class="hidden md:inline">IGRM</span>
+                </a>
+                
+                <!-- Tombol Delivery Schedule -->
+                <a href="delivery.html" class="flex items-center gap-2 px-3 py-2 bg-orange-500 rounded-lg font-medium text-white hover:bg-orange-600 transition text-sm">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+                    </svg>
+                    <span class="hidden md:inline">Delivery</span>
+                </a>
+                
+                <!-- Tombol Refresh -->
+                <button onclick="refreshData()" class="flex items-center gap-2 px-3 py-2 zuma-green rounded-lg font-medium zuma-dark-text hover:opacity-90 transition text-sm">
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
                     </svg>
-                    Refresh
+                    <span class="hidden sm:inline">Refresh</span>
                 </button>
             </div>
         </div>
